@@ -1,5 +1,6 @@
 <?php
 
+include_once('dbc.php');
 
 class Users 
 {
@@ -7,47 +8,55 @@ class Users
     
     function __construct() 
     {
-        validateUserScores();
-        $this->userScores = getUserScores();
+        self::validateUserScores();
+        $this->userScores = self::getUserScores();
+       
     }
     
     function __destruct()
     {
-        updateUserScores($this->userScores);
+        self::updateUserScores($this->userScores);
     }
     
     /*
      * Sets the current object instance variable userScores
      */
-    private function getUserScores() : Array
+    public function getUserScores() : Array
     {
         $db = new dbc();
-        $sql = "select username, slackUserName, score from userScores";
-        $result = $db->query($sql);
+        $sql = "select user_name, slack_user_name, score from user_scores;";
+        $dbc = $db->connect();
+        $stmt = $dbc->prepare($sql);
+        $stmt->execute();
         $userScores = Array();
-        while($next = $result->fetchObject())
+        // perhaps unnecessary object to array conversion here, why not take results as array directly; or return the object;
+        while($next = $stmt->fetch(PDO::FETCH_ASSOC))
         {
-            $userScores[$next->slackUserName] = 
+            
+            $userScores[$next['slack_user_name']]= 
                 Array(
-                        'name' => $next->name,
-                        'slackUserName' => $next->slackUserName,
-                        'score' => $next->score
+                        'name' => $next['user_name'],
+                        'slackUserName' => $next['slack_user_name'],
+                        'score' => $next['score']
                 );
+            
         }
         return $userScores;
     }
     
-    private function validateUserScores()
+    public function validateUserScores()
     {
-        $currentUserArray = getUserScores();
+        $currentUserArray = self::getUserScores();
         $slackUserArray = Slack::getSlackUsers();
-        
+
         // If any new users add them to the db with default score
-        $newUsers = array_diff_key($currentUserArray, $slackUserArray);
+        $newUsers = array_diff_key($slackUserArray, $currentUserArray);
+        
         foreach ($newUsers as $key)
         {
-            $newUser = $slackUserArray[$key];
-            addUserScore($newUser['name'], $newUser['slackUserName']);
+            $newUser = $key;
+            //print_r($newUser);
+            self::addUserScore($newUser['name'], $newUser['slackUserName']);
         }
         
         // If any deleted users exist remove them from the db
@@ -62,35 +71,38 @@ class Users
             }
         }
         // Then figure out which users that alaready exists are now deleted and delete them
-        $toDelete = array_intersect($currentUserArray, $deletedUsers);
-        foreach ($toDelete as $key)
+        $toDelete = null; // array_intersect($currentUserArray, $deletedUsers);
+        if($toDelete)
         {
-            deleteUserScore($key);
+            foreach ($toDelete as $key)
+            {
+                deleteUserScore($key);
+            }
         }
-           
     }
     
     /*
      * method insertNewUserScore - Creates a new record in the database for a new user_score
      *
      */
-    private function addUserScore(String $name, String $slackname) : bool
+    private function addUserScore(String $name, String $slackname)
     {
+        $dbc = new dbc;
         $sql = "INSERT INTO USER_SCORES( user_name, slack_user_name, score)
                                 VALUES (:uname, :slack_uname, :score);";
         $data = Array
         (
             "uname" => $name,
-            "slack_name" => $slackname,
+            "slack_uname" => $slackname,
             "score" => 0
         );
-        $stmt = $this->dbc->prepare($sql);
-        $result = $stmt->execute($data);
+       
+        $result = $dbc->query($sql, $data);
+        
         if(!$result)
         {
             Logger::writeLogMessage("Error --> insertNewUserScore failed to update the database");
         }
-        return $result;
     }
     
     private function deleteUserScore(String & $slackUserName)
@@ -116,8 +128,8 @@ class Users
             $sql = "UPDATE user_scores SET score = :score WHERE slack_user_name = :slack_user_name";
             $data = Array
             (
-                "score" => $userScores[$key]['score'],
-                "slack_user_name" => $userScores[$key]['slack_user_name']
+                "score" => $key['score'],
+                "slack_user_name" => $key['slackUserName']
             );
             $db->query($sql, $data);
         }
@@ -129,7 +141,8 @@ class Users
     public function processUserScore(String $slackUserName, String $karma) : bool
     {
         // check if the value already exists in the database
-        if($this->userScores['slackUserName'] === $slackUserName)
+        //print_r($this->userScores[$slackUserName]);
+        if(array_key_exists($slackUserName, $this->userScores))
         {
             $scoreChange = 0;
             if      ($karma === "++") { $scoreChange = 1; }

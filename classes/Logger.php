@@ -2,9 +2,9 @@
 
 class Logger
 {
-    const LOGFILE = "../logs/plusBotLog.txt";
+    const LOGFILE = "..\logs\plusbotLog.txt";
     
-    public static function openFile(string &$fileName, bool $append = true)
+    public static function openFile(string $fileName, bool $append = true)
     {
         $fileMode = ($append) ? 'a+' : 'w+';
         try 
@@ -29,11 +29,12 @@ class Logger
         return true;
     }
 
-    public static function writeLogMessage(string &$message)
+    public static function writeLogMessage(string $message)
     {
-        $fh_logFile = openFile(self::LOGFILE);
+        $fh_logFile = fopen('logs\\plusbotLog.txt', 'a+');
+        //$fh_logFile = self::openFile(self::LOGFILE);
         fwrite($fh_logFile, $message."\n");
-        closeFile($fh_logFile);
+        self::closeFile($fh_logFile);
     }    
     
  }

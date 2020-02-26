@@ -12,7 +12,6 @@ require_once('classes/Users.php');
 
 // Create objects required for the program function
 $Slack = new Slack();
-
 // Get input from Slack post
 $sInput = file_get_contents('php://input');
 $arInput = json_decode($sInput, true);
@@ -24,7 +23,7 @@ $bIsAuthorizedSlackMessage = false;
 if($arInput['challenge'] ?? false)
 {
     // Validate and reply to challenge message
-    $Slack->challengeMessageValidateAndReply($arInput['challenge']);
+    $Slack->challengeMessageValidateAndReply($arInput['challenge']); 
     die();
 }
 
@@ -37,7 +36,7 @@ if($arInput['token'] ?? false)
     // If not valid/authorized slack post, then disregard message posted and quit
     if(!$bIsAuthorizedSlackMessage)
     {
-        echo "failed token validation";
+        Logger::writeLogMessage("Error --> Failed  validation. \n");
         die();
     }
 }
@@ -56,9 +55,10 @@ if ($arInput['event']['type'] === 'message' && $bIsAuthorizedSlackMessage)
     // foreach user found, update the user score and post back a message
     foreach ($usersFound as $key)
     {
+       
         $users = new Users();
-        $targetUser = $usersFound[$key][0];
-        $karma = $usersFound[$key][1];
+        $targetUser = $key[0];
+        $karma = $key[1];
         if($users->processUserScore($targetUser, $karma))
         {
             $Slack->postResponseMessage($users, $karma, $postChannel, $targetUser, $postUser);
@@ -73,7 +73,7 @@ if ($arInput['event']['type'] === 'message' && $bIsAuthorizedSlackMessage)
 
 //     }
     // If no users or things were found, check the message for other commands
-    if(isempty($usersFound) && isempty($arThingsFound))
+    if(empty($usersFound) && empty($arThingsFound))
     {
         $Slack->checkOtherFunctions($sMessage);
     }

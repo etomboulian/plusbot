@@ -6,11 +6,11 @@ include_once("Logger.php");
 class dbc 
 {
     // Create database connection to plusbot mysql database
-    private String $dbserver = "localhost";
-    private String $dbname = "plusbot";
-    private String $username = Secrets::DB_USERNAME;
-    private String $password = Secrets::DB_PASSWORD;
-    private PDO $dbc;
+    private $dbserver = "localhost";
+    private $dbname = "plusbot";
+    private $username = Secrets::DB_USERNAME;
+    private $password = Secrets::DB_PASSWORD;
+    private $dbc;
 
     function __construct() 
     {
@@ -19,6 +19,7 @@ class dbc
         try     // make the db connection and assign to instance variable
         {
             $this->dbc = new PDO($dsn, $this->username, $this->password);
+            
         } 
         catch (PDOException $e)  // catch exception if thrown
         {
@@ -31,11 +32,16 @@ class dbc
         // Manually close the db connection on object destruction
         $this->dbc = null;
     }
+
+    function connect()
+    {
+        return $this->dbc;
+    }
     
-    function query(String &$sql, Array &$data = null) : object
+    function query(String &$sql, Array &$data = null)
     {
         $stmt = $this->dbc->prepare($sql);
-        if($data !== null)  $stmt->execute($data);
+        if($data !== null) $stmt->execute($data);
         else $stmt->execute();
         return $stmt;
     }
